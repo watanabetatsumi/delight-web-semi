@@ -39,7 +39,14 @@ export const postsApi = {
   getPosts: async (): Promise<Post[]> => {
     try {
       const response = await api.get('/api/posts')
-      return response.data || []
+      const data = response.data
+      if (Array.isArray(data)) {
+        return data
+      }
+      if (data && Array.isArray(data.posts)) {
+        return data.posts
+      }
+      return []
     } catch (error) {
       console.error('Failed to fetch posts:', error)
       throw new Error('投稿の取得に失敗しました')
