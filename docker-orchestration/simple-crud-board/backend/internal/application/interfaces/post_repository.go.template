@@ -1,0 +1,49 @@
+// Package interfaces defines contracts for the application layer
+// 学習課題: このテンプレートを参考に、完全なリポジトリインターフェースを実装してください
+package interfaces
+
+import (
+	"context"
+	"docker-orchestration/simple-crud-board/backend/internal/domain/entities"
+)
+
+// PostRepository defines the contract for post data access
+// TODO: PostRepositoryインターフェースを完全に実装してください
+type PostRepository interface {
+	// TODO: 基本的なCRUD操作を定義
+	// Create(ctx context.Context, post *entities.Post) error
+	// GetByID(ctx context.Context, id int) (*entities.Post, error)
+	// GetAll(ctx context.Context) ([]*entities.Post, error)
+	// Update(ctx context.Context, post *entities.Post) error
+	// Delete(ctx context.Context, id int) error
+	
+	// TODO: ユーザー関連の操作を定義
+	// GetByUserID(ctx context.Context, userID int) ([]*entities.Post, error)
+	// GetByUserIDWithPagination(ctx context.Context, userID int, offset, limit int) ([]*entities.Post, error)
+	
+	// TODO: 検索・フィルタリング操作を定義
+	// SearchByContent(ctx context.Context, query string) ([]*entities.Post, error)
+	// GetWithPagination(ctx context.Context, offset, limit int) ([]*entities.Post, error)
+	// GetRecentPosts(ctx context.Context, limit int) ([]*entities.Post, error)
+	
+	// TODO: 統計・集計操作を定義
+	// CountByUserID(ctx context.Context, userID int) (int, error)
+	// CountAll(ctx context.Context) (int, error)
+}
+
+// 実装のヒント:
+// 1. インターフェースは抽象的な操作のみを定義
+// 2. 具体的な実装詳細は含めない
+// 3. エラーハンドリングを考慮
+// 4. コンテキストを使用してキャンセレーション対応
+// 5. ページネーション対応を考慮
+
+// 設計原則:
+// - Interface Segregation Principle (ISP)
+// - Dependency Inversion Principle (DIP)
+// - 単一責任の原則
+
+// 参考実装パターン:
+// - Repository Pattern
+// - Unit of Work Pattern
+// - Specification Pattern (高度な検索の場合)

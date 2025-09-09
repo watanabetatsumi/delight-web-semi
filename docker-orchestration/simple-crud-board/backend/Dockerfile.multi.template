@@ -1,0 +1,102 @@
+# Multi-stage Dockerfile Template for Go Backend
+# 学習課題: このテンプレートを参考に、最適化されたDockerfileを実装してください
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+
+# TODO: ビルドステージを実装
+# FROM golang:1.21-alpine AS builder
+
+# 作業ディレクトリの設定
+# WORKDIR /app
+
+# 依存関係の管理
+# TODO: go.mod と go.sum をコピー
+# COPY go.mod go.sum ./
+
+# 依存関係のダウンロード
+# TODO: go mod download を実行
+
+# ソースコードのコピー
+# TODO: ソースコードをコピー
+# COPY . .
+
+# アプリケーションのビルド
+# TODO: 最適化されたビルドコマンドを実装
+# 推奨設定:
+# - CGO_ENABLED=0 (静的リンク)
+# - GOOS=linux (Linux用)
+# - 適切なビルドフラグ (-ldflags="-w -s" でサイズ削減)
+
+# =============================================================================
+# Production Stage
+# =============================================================================
+
+# TODO: 本番ステージを実装
+# FROM alpine:latest AS runner
+
+# セキュリティ設定
+# TODO: 必要なパッケージのインストール
+# RUN apk --no-cache add ca-certificates tzdata
+
+# 非rootユーザーの作成
+# TODO: セキュリティのため非rootユーザーを作成
+# RUN addgroup -g 1001 -S appgroup && \
+#     adduser -u 1001 -S appuser -G appgroup
+
+# 作業ディレクトリの設定
+# WORKDIR /app
+
+# ビルドステージからバイナリをコピー
+# TODO: ビルドしたバイナリをコピー
+# COPY --from=builder /app/main .
+
+# 設定ファイルのコピー (必要に応じて)
+# TODO: 設定ファイルがある場合はコピー
+# COPY --from=builder /app/config ./config
+
+# 権限の設定
+# TODO: 適切な権限を設定
+# RUN chown -R appuser:appgroup /app
+# USER appuser
+
+# ポートの公開
+# TODO: アプリケーションが使用するポートを公開
+# EXPOSE 8080
+
+# ヘルスチェックの設定
+# TODO: ヘルスチェックを実装
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:8080/health || exit 1
+
+# アプリケーションの起動
+# TODO: アプリケーションを起動するコマンドを設定
+# CMD ["./main"]
+
+# =============================================================================
+# Implementation Notes
+# =============================================================================
+
+# 最適化のポイント:
+# 1. マルチステージビルドでイメージサイズを削減
+# 2. 静的リンクで依存関係を削減
+# 3. 非rootユーザーでセキュリティ向上
+# 4. 必要最小限のパッケージのみインストール
+# 5. レイヤーキャッシュを活用
+
+# セキュリティのポイント:
+# 1. 最新のベースイメージを使用
+# 2. 脆弱性のないパッケージを選択
+# 3. 不要なファイルを含めない
+# 4. 適切な権限設定
+
+# パフォーマンスのポイント:
+# 1. ビルドキャッシュの活用
+# 2. 並列ビルドの利用
+# 3. 不要なレイヤーの削減
+
+# 参考コマンド:
+# docker build -f Dockerfile.multi -t app:latest .
+# docker run --rm -p 8080:8080 app:latest
+# docker images app:latest  # イメージサイズの確認

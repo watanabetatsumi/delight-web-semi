@@ -1,0 +1,302 @@
+// WebSocket Hub implementation for real-time chat
+package chat
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"sync"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+)
+
+// WebSocket upgrader
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		// In production, check origin properly
+		return true
+	},
+}
+
+// Message types
+const (
+	MessageTypeChat     = "chat"
+	MessageTypeJoin     = "join"
+	MessageTypeLeave    = "leave"
+	MessageTypeTyping   = "typing"
+	MessageTypeOnline   = "online"
+	MessageTypeOffline  = "offline"
+)
+
+// WebSocket message structure
+type WSMessage struct {
+	Type      string      `json:"type"`
+	Data      interface{} `json:"data"`
+	Timestamp int64       `json:"timestamp"`
+}
+
+// Chat message data
+type ChatMessageData struct {
+	ID         int    `json:"id"`
+	SenderID   int    `json:"sender_id"`
+	ReceiverID int    `json:"receiver_id"`
+	Content    string `json:"content"`
+	Timestamp  int64  `json:"timestamp"`
+}
+
+// Client represents a WebSocket connection
+type Client struct {
+	ID     int
+	UserID int
+	Conn   *websocket.Conn
+	Send   chan WSMessage
+	Hub    *Hub
+}
+
+// Hub maintains active clients and broadcasts messages
+type Hub struct {
+	// Registered clients by user ID
+	clients map[int]*Client
+	
+	// Register requests from clients
+	register chan *Client
+	
+	// Unregister requests from clients
+	unregister chan *Client
+	
+	// Broadcast messages to specific user
+	broadcast chan BroadcastMessage
+	
+	// Mutex for thread safety
+	mutex sync.RWMutex
+}
+
+type BroadcastMessage struct {
+	UserID  int
+	Message WSMessage
+}
+
+// NewHub creates a new WebSocket hub
+func NewHub() *Hub {
+	return &Hub{
+		clients:    make(map[int]*Client),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		broadcast:  make(chan BroadcastMessage),
+	}
+}
+
+// Run starts the hub
+func (h *Hub) Run() {
+	for {
+		select {
+		case client := <-h.register:
+			h.mutex.Lock()
+			h.clients[client.UserID] = client
+			h.mutex.Unlock()
+			
+			log.Printf("User %d connected", client.UserID)
+			
+			// Notify others that user is online
+			h.broadcastUserStatus(client.UserID, true)
+
+		case client := <-h.unregister:
+			h.mutex.Lock()
+			if _, ok := h.clients[client.UserID]; ok {
+				delete(h.clients, client.UserID)
+				close(client.Send)
+			}
+			h.mutex.Unlock()
+			
+			log.Printf("User %d disconnected", client.UserID)
+			
+			// Notify others that user is offline
+			h.broadcastUserStatus(client.UserID, false)
+
+		case message := <-h.broadcast:
+			h.mutex.RLock()
+			client, exists := h.clients[message.UserID]
+			h.mutex.RUnlock()
+			
+			if exists {
+				select {
+				case client.Send <- message.Message:
+				default:
+					// Client's send channel is full, close it
+					h.mutex.Lock()
+					delete(h.clients, message.UserID)
+					close(client.Send)
+					h.mutex.Unlock()
+				}
+			}
+		}
+	}
+}
+
+// SendToUser sends a message to a specific user
+func (h *Hub) SendToUser(userID int, message WSMessage) {
+	h.broadcast <- BroadcastMessage{
+		UserID:  userID,
+		Message: message,
+	}
+}
+
+// GetOnlineUsers returns list of online user IDs
+func (h *Hub) GetOnlineUsers() []int {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	
+	users := make([]int, 0, len(h.clients))
+	for userID := range h.clients {
+		users = append(users, userID)
+	}
+	return users
+}
+
+// broadcastUserStatus notifies all clients about user online/offline status
+func (h *Hub) broadcastUserStatus(userID int, online bool) {
+	status := MessageTypeOffline
+	if online {
+		status = MessageTypeOnline
+	}
+	
+	message := WSMessage{
+		Type: status,
+		Data: map[string]interface{}{
+			"user_id": userID,
+			"online":  online,
+		},
+		Timestamp: getCurrentTimestamp(),
+	}
+	
+	h.mutex.RLock()
+	for _, client := range h.clients {
+		if client.UserID != userID {
+			select {
+			case client.Send <- message:
+			default:
+				// Skip if channel is full
+			}
+		}
+	}
+	h.mutex.RUnlock()
+}
+
+// Client methods
+func (c *Client) readPump() {
+	defer func() {
+		c.Hub.unregister <- c
+		c.Conn.Close()
+	}()
+
+	for {
+		var message WSMessage
+		err := c.Conn.ReadJSON(&message)
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("WebSocket error: %v", err)
+			}
+			break
+		}
+
+		// Handle different message types
+		c.handleMessage(message)
+	}
+}
+
+func (c *Client) writePump() {
+	defer c.Conn.Close()
+
+	for {
+		select {
+		case message, ok := <-c.Send:
+			if !ok {
+				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			if err := c.Conn.WriteJSON(message); err != nil {
+				log.Printf("WebSocket write error: %v", err)
+				return
+			}
+		}
+	}
+}
+
+func (c *Client) handleMessage(message WSMessage) {
+	switch message.Type {
+	case MessageTypeChat:
+		// Handle chat message
+		c.handleChatMessage(message)
+	case MessageTypeTyping:
+		// Handle typing indicator
+		c.handleTypingMessage(message)
+	}
+}
+
+func (c *Client) handleChatMessage(message WSMessage) {
+	// Parse message data
+	data, ok := message.Data.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	receiverID, ok := data["receiver_id"].(float64)
+	if !ok {
+		return
+	}
+
+	content, ok := data["content"].(string)
+	if !ok {
+		return
+	}
+
+	// Save message to database (implement this)
+	chatMessage := &ChatMessageData{
+		SenderID:   c.UserID,
+		ReceiverID: int(receiverID),
+		Content:    content,
+		Timestamp:  getCurrentTimestamp(),
+	}
+
+	// TODO: Save to database and get ID
+	// chatMessage.ID = savedMessage.ID
+
+	// Send to receiver
+	responseMessage := WSMessage{
+		Type:      MessageTypeChat,
+		Data:      chatMessage,
+		Timestamp: chatMessage.Timestamp,
+	}
+
+	c.Hub.SendToUser(int(receiverID), responseMessage)
+}
+
+func (c *Client) handleTypingMessage(message WSMessage) {
+	// Forward typing indicator to receiver
+	data, ok := message.Data.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	receiverID, ok := data["receiver_id"].(float64)
+	if !ok {
+		return
+	}
+
+	typingMessage := WSMessage{
+		Type: MessageTypeTyping,
+		Data: map[string]interface{}{
+			"sender_id": c.UserID,
+			"typing":    data["typing"],
+		},
+		Timestamp: getCurrentTimestamp(),
+	}
+
+	c.Hub.SendToUser(int(receiverID), typingMessage)
+}
+
+func getCurrentTimestamp() int64 {
+	return time.Now().Unix()
+}

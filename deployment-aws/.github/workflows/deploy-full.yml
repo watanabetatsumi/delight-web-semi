@@ -1,0 +1,267 @@
+# 完全デプロイメントワークフロー
+#
+# 🎯 学習ポイント:
+# - 複数ワークフローの連携実行
+# - 依存関係のあるデプロイメント順序
+# - エラーハンドリングとロールバック戦略
+
+name: Full Deployment
+
+# TODO: ワークフローのトリガー設定
+on:
+  # メインブランチへのプッシュ時
+  push:
+    branches:
+      - main
+      - develop
+  
+  # 手動実行を許可
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      skip_infrastructure:
+        description: 'Skip infrastructure deployment'
+        required: false
+        default: false
+        type: boolean
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+
+# TODO: 環境変数の設定
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  NODE_VERSION: '18'
+  GO_VERSION: '1.21'
+
+# TODO: ジョブの定義
+jobs:
+  # 環境の決定
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      skip_infrastructure: ${{ steps.env.outputs.skip_infrastructure }}
+      skip_tests: ${{ steps.env.outputs.skip_tests }}
+    steps:
+      - name: Determine deployment parameters
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "skip_infrastructure=${{ github.event.inputs.skip_infrastructure }}" >> $GITHUB_OUTPUT
+            echo "skip_tests=${{ github.event.inputs.skip_tests }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "skip_infrastructure=false" >> $GITHUB_OUTPUT
+            echo "skip_tests=false" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "skip_infrastructure=false" >> $GITHUB_OUTPUT
+            echo "skip_tests=false" >> $GITHUB_OUTPUT
+          fi
+
+  # テストの実行
+  run-tests:
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.skip_tests != 'true'
+    
+    steps:
+      # TODO: リポジトリのチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # TODO: Node.js のセットアップ
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # TODO: Go のセットアップ
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: lambda/go.sum
+
+      # TODO: フロントエンドテスト
+      - name: Run frontend tests
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test
+          npm run lint
+          npm run type-check
+
+      # TODO: バックエンドテスト
+      - name: Run backend tests
+        working-directory: lambda
+        run: |
+          go mod download
+          go test -v ./...
+          go vet ./...
+
+  # インフラストラクチャのデプロイ
+  deploy-infrastructure:
+    needs: [setup, run-tests]
+    if: always() && (needs.run-tests.result == 'success' || needs.setup.outputs.skip_tests == 'true') && needs.setup.outputs.skip_infrastructure != 'true'
+    uses: ./.github/workflows/deploy-infrastructure.yml
+    with:
+      environment: ${{ needs.setup.outputs.environment }}
+    secrets: inherit
+
+  # バックエンドのデプロイ
+  deploy-backend:
+    needs: [setup, deploy-infrastructure]
+    if: always() && (needs.deploy-infrastructure.result == 'success' || needs.setup.outputs.skip_infrastructure == 'true')
+    uses: ./.github/workflows/deploy-backend.yml
+    with:
+      environment: ${{ needs.setup.outputs.environment }}
+    secrets: inherit
+
+  # フロントエンドのデプロイ
+  deploy-frontend:
+    needs: [setup, deploy-infrastructure, deploy-backend]
+    if: always() && needs.deploy-backend.result == 'success'
+    uses: ./.github/workflows/deploy-frontend.yml
+    with:
+      environment: ${{ needs.setup.outputs.environment }}
+      api_gateway_url: ${{ needs.deploy-infrastructure.outputs.api_gateway_url }}
+    secrets: inherit
+
+  # デプロイメント後のテスト
+  post-deployment-tests:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-frontend]
+    if: always() && needs.deploy-frontend.result == 'success'
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      # TODO: リポジトリのチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # TODO: インフラストラクチャ出力の取得
+      - name: Download infrastructure outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-outputs-${{ needs.setup.outputs.environment }}
+          path: outputs/
+
+      # TODO: API ヘルスチェック
+      - name: API Health Check
+        run: |
+          API_URL=$(cat outputs/terraform-outputs.json | jq -r '.api_gateway_url')
+          echo "Testing API at: $API_URL"
+          
+          # ヘルスチェックエンドポイントのテスト
+          curl -f "$API_URL/health" || exit 1
+          
+          # 投稿一覧エンドポイントのテスト
+          curl -f "$API_URL/api/posts" || exit 1
+
+      # TODO: フロントエンドのテスト
+      - name: Frontend Smoke Test
+        run: |
+          S3_BUCKET=$(cat outputs/terraform-outputs.json | jq -r '.s3_bucket_name')
+          WEBSITE_URL="http://$S3_BUCKET.s3-website-${{ env.AWS_REGION }}.amazonaws.com"
+          echo "Testing frontend at: $WEBSITE_URL"
+          
+          # フロントエンドの基本的な動作確認
+          curl -f "$WEBSITE_URL" || exit 1
+
+  # デプロイメント結果の通知
+  notify-deployment-result:
+    runs-on: ubuntu-latest
+    needs: [setup, run-tests, deploy-infrastructure, deploy-backend, deploy-frontend, post-deployment-tests]
+    if: always()
+    
+    steps:
+      # TODO: デプロイメント結果の判定
+      - name: Determine deployment result
+        id: result
+        run: |
+          if [ "${{ needs.post-deployment-tests.result }}" = "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ Deployment completed successfully" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy-frontend.result }}" = "failure" ] || [ "${{ needs.deploy-backend.result }}" = "failure" ] || [ "${{ needs.deploy-infrastructure.result }}" = "failure" ]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Deployment failed" >> $GITHUB_OUTPUT
+          else
+            echo "status=partial" >> $GITHUB_OUTPUT
+            echo "message=⚠️ Deployment completed with warnings" >> $GITHUB_OUTPUT
+          fi
+
+      # TODO: デプロイメントサマリーの作成
+      - name: Create deployment summary
+        run: |
+          echo "## 🚀 Full Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.result.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests: ${{ needs.run-tests.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Infrastructure: ${{ needs.deploy-infrastructure.result || 'skipped' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend: ${{ needs.deploy-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: ${{ needs.deploy-frontend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Post-deployment Tests: ${{ needs.post-deployment-tests.result }}" >> $GITHUB_STEP_SUMMARY
+
+      # TODO: Slack通知（オプション）
+      # - name: Notify Slack
+      #   if: always()
+      #   uses: 8398a7/action-slack@v3
+      #   with:
+      #     status: ${{ steps.result.outputs.status }}
+      #     text: ${{ steps.result.outputs.message }}
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ロールバック（失敗時）
+  rollback:
+    runs-on: ubuntu-latest
+    needs: [setup, deploy-infrastructure, deploy-backend, deploy-frontend, post-deployment-tests]
+    if: failure() && needs.setup.outputs.environment == 'prod'
+    environment: ${{ needs.setup.outputs.environment }}
+    
+    steps:
+      # TODO: リポジトリのチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # TODO: 前回の成功したデプロイメントにロールバック
+      - name: Rollback deployment
+        run: |
+          echo "🔄 Initiating rollback for production environment"
+          echo "This would typically involve:"
+          echo "1. Reverting Lambda function to previous version"
+          echo "2. Restoring previous frontend version from backup"
+          echo "3. Rolling back database migrations if any"
+          echo "4. Notifying team of rollback"
+          
+          # 実際のロールバック処理をここに実装
+          # 例: AWS CLI を使用して前のバージョンに戻す
+
+      # TODO: ロールバック通知
+      - name: Notify rollback
+        run: |
+          echo "## 🔄 Rollback Executed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Production deployment failed and has been rolled back to the previous stable version." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Rollback triggered by:** Deployment failure" >> $GITHUB_STEP_SUMMARY

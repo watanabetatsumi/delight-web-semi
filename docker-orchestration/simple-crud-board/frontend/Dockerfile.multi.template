@@ -1,0 +1,139 @@
+# Multi-stage Dockerfile Template for Next.js Frontend
+# 学習課題: このテンプレートを参考に、最適化されたDockerfileを実装してください
+
+# =============================================================================
+# Dependencies Stage
+# =============================================================================
+
+# TODO: 依存関係ステージを実装
+# FROM node:18-alpine AS deps
+
+# 作業ディレクトリの設定
+# WORKDIR /app
+
+# 依存関係ファイルのコピー
+# TODO: package.json と package-lock.json をコピー
+# COPY package*.json ./
+
+# 依存関係のインストール
+# TODO: 本番用依存関係のみインストール
+# RUN npm ci --only=production --frozen-lockfile
+
+# =============================================================================
+# Build Stage
+# =============================================================================
+
+# TODO: ビルドステージを実装
+# FROM node:18-alpine AS builder
+
+# 作業ディレクトリの設定
+# WORKDIR /app
+
+# 依存関係のコピー
+# TODO: 前ステージから依存関係をコピー
+# COPY --from=deps /app/node_modules ./node_modules
+
+# ソースコードのコピー
+# TODO: ソースコードをコピー
+# COPY . .
+
+# Next.js設定
+# TODO: 本番ビルド用の環境変数を設定
+# ENV NODE_ENV=production
+# ENV NEXT_TELEMETRY_DISABLED=1
+
+# アプリケーションのビルド
+# TODO: Next.jsアプリケーションをビルド
+# RUN npm run build
+
+# =============================================================================
+# Production Stage
+# =============================================================================
+
+# TODO: 本番ステージを実装
+# FROM node:18-alpine AS runner
+
+# セキュリティ設定
+# TODO: 非rootユーザーの作成
+# RUN addgroup --system --gid 1001 nodejs && \
+#     adduser --system --uid 1001 nextjs
+
+# 作業ディレクトリの設定
+# WORKDIR /app
+
+# 本番環境設定
+# ENV NODE_ENV=production
+# ENV NEXT_TELEMETRY_DISABLED=1
+
+# 必要なファイルのコピー
+# TODO: ビルド成果物をコピー
+# COPY --from=builder /app/public ./public
+# COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# 権限の設定
+# TODO: 適切な権限を設定
+# USER nextjs
+
+# ポートの公開
+# TODO: Next.jsが使用するポートを公開
+# EXPOSE 3000
+
+# 環境変数の設定
+# ENV PORT=3000
+# ENV HOSTNAME="0.0.0.0"
+
+# ヘルスチェックの設定
+# TODO: ヘルスチェックを実装
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#     CMD curl -f http://localhost:3000/api/health || exit 1
+
+# アプリケーションの起動
+# TODO: Next.jsアプリケーションを起動
+# CMD ["node", "server.js"]
+
+# =============================================================================
+# Alternative: Static Export (オプション)
+# =============================================================================
+
+# 静的エクスポート用の設定 (SPAの場合)
+# FROM nginx:alpine AS static
+# COPY --from=builder /app/out /usr/share/nginx/html
+# COPY nginx.conf /etc/nginx/nginx.conf
+# EXPOSE 80
+# CMD ["nginx", "-g", "daemon off;"]
+
+# =============================================================================
+# Implementation Notes
+# =============================================================================
+
+# Next.js最適化のポイント:
+# 1. Standalone出力を使用してサイズ削減
+# 2. 静的ファイルの適切な配置
+# 3. 不要なdevDependenciesの除外
+# 4. イメージレイヤーの最適化
+
+# セキュリティのポイント:
+# 1. 非rootユーザーでの実行
+# 2. 最小限の権限設定
+# 3. 不要なファイルの除外
+# 4. セキュリティヘッダーの設定
+
+# パフォーマンスのポイント:
+# 1. マルチステージビルドでサイズ削減
+# 2. 依存関係の効率的なキャッシュ
+# 3. 静的ファイルの最適化
+# 4. 適切なNode.jsバージョンの選択
+
+# next.config.js での設定例:
+# module.exports = {
+#   output: 'standalone',
+#   experimental: {
+#     outputFileTracingRoot: path.join(__dirname, '../../'),
+#   },
+# }
+
+# 参考コマンド:
+# docker build -f Dockerfile.multi -t frontend:latest .
+# docker run --rm -p 3000:3000 frontend:latest
+# docker images frontend:latest  # イメージサイズの確認

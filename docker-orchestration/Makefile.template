@@ -1,0 +1,186 @@
+# Docker Orchestration Makefile
+# 学習課題: このテンプレートを参考に、完全なMakefileを実装してください
+
+# =============================================================================
+# Variables
+# =============================================================================
+
+# TODO: 環境変数の読み込み設定を実装
+# ヒント: include .env または export $(shell sed 's/=.*//' .env)
+
+# TODO: Docker Compose設定
+# COMPOSE_FILE = ?
+# PROJECT_NAME = ?
+
+# TODO: サービス名の定義
+# SERVICES = ?
+# FRONTEND_SERVICES = ?
+# BACKEND_SERVICES = ?
+
+# =============================================================================
+# Help Target (実装済み - 参考用)
+# =============================================================================
+
+.PHONY: help
+help: ## Show this help message
+	@echo "Docker Orchestration - Available Commands:"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+
+# =============================================================================
+# Main Commands (要実装)
+# =============================================================================
+
+.PHONY: up
+up: ## Start all services
+	# TODO: 全サービスを起動するコマンドを実装
+	# ヒント: docker-compose up -d
+	@echo "TODO: Implement service startup"
+
+.PHONY: down
+down: ## Stop all services
+	# TODO: 全サービスを停止するコマンドを実装
+	# ヒント: docker-compose down
+	@echo "TODO: Implement service shutdown"
+
+.PHONY: build
+build: ## Build all images
+	# TODO: 全イメージをビルドするコマンドを実装
+	# ヒント: docker-compose build
+	@echo "TODO: Implement image building"
+
+.PHONY: logs
+logs: ## Show logs from all services
+	# TODO: 全サービスのログを表示するコマンドを実装
+	# ヒント: docker-compose logs -f
+	@echo "TODO: Implement log viewing"
+
+# =============================================================================
+# Individual Service Commands (要実装)
+# =============================================================================
+
+.PHONY: up-frontend
+up-frontend: ## Start frontend services only
+	# TODO: フロントエンドサービスのみ起動
+	@echo "TODO: Implement frontend startup"
+
+.PHONY: up-backend
+up-backend: ## Start backend services only
+	# TODO: バックエンドサービスのみ起動
+	@echo "TODO: Implement backend startup"
+
+.PHONY: up-db
+up-db: ## Start database service only
+	# TODO: データベースサービスのみ起動
+	@echo "TODO: Implement database startup"
+
+# =============================================================================
+# Development Commands (要実装)
+# =============================================================================
+
+.PHONY: shell-db
+shell-db: ## Connect to MySQL shell
+	# TODO: MySQLシェルに接続するコマンドを実装
+	# ヒント: docker exec -it mysql-container mysql -u root -p
+	@echo "TODO: Implement database shell access"
+
+.PHONY: migrate
+migrate: ## Run database migrations
+	# TODO: データベースマイグレーションを実行
+	@echo "TODO: Implement database migration"
+
+.PHONY: seed
+seed: ## Seed database with sample data
+	# TODO: サンプルデータの投入
+	@echo "TODO: Implement database seeding"
+
+# =============================================================================
+# Testing Commands (要実装)
+# =============================================================================
+
+.PHONY: test
+test: ## Run all tests
+	# TODO: 全テストを実行
+	@echo "TODO: Implement testing"
+
+.PHONY: test-backend
+test-backend: ## Run backend tests only
+	# TODO: バックエンドテストのみ実行
+	@echo "TODO: Implement backend testing"
+
+.PHONY: health-check
+health-check: ## Check health of all services
+	# TODO: 全サービスのヘルスチェック
+	@echo "TODO: Implement health checking"
+
+# =============================================================================
+# Maintenance Commands (要実装)
+# =============================================================================
+
+.PHONY: clean
+clean: ## Clean up containers and volumes
+	# TODO: コンテナとボリュームのクリーンアップ
+	# ヒント: docker-compose down -v --remove-orphans
+	@echo "TODO: Implement cleanup"
+
+.PHONY: prune
+prune: ## Remove unused Docker resources
+	# TODO: 未使用のDockerリソースを削除
+	# ヒント: docker system prune -f
+	@echo "TODO: Implement Docker pruning"
+
+.PHONY: reset
+reset: clean ## Reset entire environment
+	# TODO: 環境の完全リセット
+	@echo "TODO: Implement environment reset"
+
+# =============================================================================
+# Monitoring Commands (要実装)
+# =============================================================================
+
+.PHONY: status
+status: ## Show status of all services
+	# TODO: 全サービスの状態を表示
+	# ヒント: docker-compose ps
+	@echo "TODO: Implement status checking"
+
+.PHONY: stats
+stats: ## Show resource usage statistics
+	# TODO: リソース使用状況を表示
+	# ヒント: docker stats
+	@echo "TODO: Implement stats display"
+
+# =============================================================================
+# Security Commands (要実装)
+# =============================================================================
+
+.PHONY: scan
+scan: ## Scan images for vulnerabilities
+	# TODO: イメージの脆弱性スキャン
+	@echo "TODO: Implement security scanning"
+
+# =============================================================================
+# Implementation Notes
+# =============================================================================
+
+# 実装のヒント:
+# 1. .env ファイルから環境変数を読み込む
+# 2. docker-compose コマンドを適切に使用する
+# 3. エラーハンドリングを追加する
+# 4. 依存関係を適切に設定する
+# 5. ログ出力を見やすくする
+
+# 参考コマンド例:
+# docker-compose up -d
+# docker-compose down
+# docker-compose build --no-cache
+# docker-compose logs -f --tail=100
+# docker exec -it container_name command
+
+# 高度な実装:
+# - 条件分岐による環境別設定
+# - 並列実行の制御
+# - 自動的な依存関係解決
+# - カラー出力による視認性向上

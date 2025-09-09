@@ -1,0 +1,94 @@
+// Package entities contains the core business entities
+// 学習課題: このテンプレートを参考に、完全なPostエンティティを実装してください
+package entities
+
+import (
+	"errors"
+	"strings"
+	"time"
+)
+
+// Post represents a bulletin board post entity
+// TODO: Postエンティティを完全に実装してください
+type Post struct {
+	// TODO: 必要なフィールドを定義
+	// ID        int       `json:"id"`
+	// Content   string    `json:"content"`
+	// UserID    int       `json:"user_id"`
+	// CreatedAt time.Time `json:"created_at"`
+	// UpdatedAt time.Time `json:"updated_at"`
+}
+
+// TODO: バリデーションメソッドを実装
+// Validate validates the post entity
+// func (p *Post) Validate() error {
+//     // コンテンツの検証
+//     if strings.TrimSpace(p.Content) == "" {
+//         return errors.New("content cannot be empty")
+//     }
+//     
+//     // コンテンツ長の検証
+//     if len(p.Content) > 1000 {
+//         return errors.New("content too long (max 1000 characters)")
+//     }
+//     
+//     // ユーザーIDの検証
+//     if p.UserID <= 0 {
+//         return errors.New("user ID must be positive")
+//     }
+//     
+//     return nil
+// }
+
+// TODO: ビジネスロジックメソッドを実装
+// IsOwnedBy checks if the post is owned by the specified user
+// func (p *Post) IsOwnedBy(userID int) bool {
+//     return p.UserID == userID
+// }
+
+// TODO: 更新メソッドを実装
+// UpdateContent updates the post content with validation
+// func (p *Post) UpdateContent(content string) error {
+//     if strings.TrimSpace(content) == "" {
+//         return errors.New("content cannot be empty")
+//     }
+//     
+//     if len(content) > 1000 {
+//         return errors.New("content too long (max 1000 characters)")
+//     }
+//     
+//     p.Content = content
+//     p.UpdatedAt = time.Now()
+//     return nil
+// }
+
+// TODO: 作成時の初期化メソッドを実装
+// NewPost creates a new post with validation
+// func NewPost(content string, userID int) (*Post, error) {
+//     post := &Post{
+//         Content:   content,
+//         UserID:    userID,
+//         CreatedAt: time.Now(),
+//         UpdatedAt: time.Now(),
+//     }
+//     
+//     if err := post.Validate(); err != nil {
+//         return nil, err
+//     }
+//     
+//     return post, nil
+// }
+
+// 実装のヒント:
+// 1. エンティティは純粋なビジネスロジックのみを含む
+// 2. データベースやHTTPに依存しない
+// 3. バリデーションはビジネスルールに基づく
+// 4. 不変性を保つためのメソッドを提供
+// 5. テストしやすい設計にする
+
+// 参考実装例:
+// - 文字列のトリミングと長さチェック
+// - 数値の範囲チェック
+// - 日時の自動設定
+// - 所有者チェック
+// - 更新時の整合性保証

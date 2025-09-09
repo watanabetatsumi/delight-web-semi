@@ -1,0 +1,253 @@
+// Package main is the entry point for the simple-crud-board backend application
+// 学習課題: このテンプレートを参考に、完全なmain.goを実装してください
+package main
+
+import (
+	"database/sql"
+	"log"
+	"os"
+	"time"
+
+	"docker-orchestration/simple-crud-board/backend/internal/application/services"
+	"docker-orchestration/simple-crud-board/backend/internal/infrastructure/repositories"
+	"docker-orchestration/simple-crud-board/backend/internal/presentation/handlers"
+	"docker-orchestration/simple-crud-board/backend/internal/presentation/middleware"
+
+	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
+)
+
+// TODO: main関数を実装
+// func main() {
+//     // 設定の読み込み
+//     config := loadConfig()
+//     
+//     // データベース接続の初期化
+//     db := setupDatabase(config)
+//     defer db.Close()
+//     
+//     // 依存性注入の設定
+//     container := setupDependencies(db)
+//     
+//     // HTTPサーバーの設定
+//     router := setupRouter(container)
+//     
+//     // サーバーの起動
+//     log.Printf("Starting server on port %s", config.Port)
+//     if err := router.Run(":" + config.Port); err != nil {
+//         log.Fatal("Failed to start server:", err)
+//     }
+// }
+
+// TODO: 設定構造体を定義
+// Config holds application configuration
+// type Config struct {
+//     Port           string
+//     DBHost         string
+//     DBPort         string
+//     DBUser         string
+//     DBPassword     string
+//     DBName         string
+//     DBMaxOpenConns int
+//     DBMaxIdleConns int
+//     DBMaxLifetime  time.Duration
+//     GinMode        string
+//     LogLevel       string
+// }
+
+// TODO: 設定読み込み関数を実装
+// loadConfig loads configuration from environment variables
+// func loadConfig() *Config {
+//     return &Config{
+//         Port:           getEnv("PORT", "8080"),
+//         DBHost:         getEnv("DB_HOST", "localhost"),
+//         DBPort:         getEnv("DB_PORT", "3306"),
+//         DBUser:         getEnv("DB_USER", "root"),
+//         DBPassword:     getEnv("DB_PASSWORD", "password"),
+//         DBName:         getEnv("DB_NAME", "appdb"),
+//         DBMaxOpenConns: getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+//         DBMaxIdleConns: getEnvAsInt("DB_MAX_IDLE_CONNS", 5),
+//         DBMaxLifetime:  getEnvAsDuration("DB_CONN_MAX_LIFETIME", 300*time.Second),
+//         GinMode:        getEnv("GIN_MODE", "debug"),
+//         LogLevel:       getEnv("LOG_LEVEL", "info"),
+//     }
+// }
+
+// TODO: 環境変数取得ヘルパー関数を実装
+// getEnv gets an environment variable or returns a default value
+// func getEnv(key, defaultValue string) string {
+//     if value := os.Getenv(key); value != "" {
+//         return value
+//     }
+//     return defaultValue
+// }
+
+// getEnvAsInt gets an environment variable as integer or returns a default value
+// func getEnvAsInt(key string, defaultValue int) int {
+//     if value := os.Getenv(key); value != "" {
+//         if intValue, err := strconv.Atoi(value); err == nil {
+//             return intValue
+//         }
+//     }
+//     return defaultValue
+// }
+
+// getEnvAsDuration gets an environment variable as duration or returns a default value
+// func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
+//     if value := os.Getenv(key); value != "" {
+//         if duration, err := time.ParseDuration(value); err == nil {
+//             return duration
+//         }
+//     }
+//     return defaultValue
+// }
+
+// TODO: データベース接続設定関数を実装
+// setupDatabase initializes database connection
+// func setupDatabase(config *Config) *sql.DB {
+//     dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+//         config.DBUser,
+//         config.DBPassword,
+//         config.DBHost,
+//         config.DBPort,
+//         config.DBName,
+//     )
+//     
+//     db, err := sql.Open("mysql", dsn)
+//     if err != nil {
+//         log.Fatal("Failed to connect to database:", err)
+//     }
+//     
+//     // 接続プールの設定
+//     db.SetMaxOpenConns(config.DBMaxOpenConns)
+//     db.SetMaxIdleConns(config.DBMaxIdleConns)
+//     db.SetConnMaxLifetime(config.DBMaxLifetime)
+//     
+//     // 接続テスト
+//     if err := db.Ping(); err != nil {
+//         log.Fatal("Failed to ping database:", err)
+//     }
+//     
+//     log.Println("Database connection established")
+//     return db
+// }
+
+// TODO: 依存性注入コンテナを定義
+// DependencyContainer holds all application dependencies
+// type DependencyContainer struct {
+//     PostHandler *handlers.PostHandler
+//     UserHandler *handlers.UserHandler  // 将来の拡張用
+// }
+
+// TODO: 依存性注入設定関数を実装
+// setupDependencies sets up dependency injection
+// func setupDependencies(db *sql.DB) *DependencyContainer {
+//     // Repository layer
+//     postRepo := repositories.NewMySQLPostRepository(db)
+//     userRepo := repositories.NewMySQLUserRepository(db)  // 将来の実装
+//     
+//     // Service layer
+//     postService := services.NewPostService(postRepo, userRepo)
+//     userService := services.NewUserService(userRepo)  // 将来の実装
+//     
+//     // Handler layer
+//     postHandler := handlers.NewPostHandler(postService)
+//     userHandler := handlers.NewUserHandler(userService)  // 将来の実装
+//     
+//     return &DependencyContainer{
+//         PostHandler: postHandler,
+//         UserHandler: userHandler,
+//     }
+// }
+
+// TODO: ルーター設定関数を実装
+// setupRouter sets up HTTP router with middleware and routes
+// func setupRouter(container *DependencyContainer) *gin.Engine {
+//     // Ginモードの設定
+//     gin.SetMode(getEnv("GIN_MODE", "debug"))
+//     
+//     router := gin.New()
+//     
+//     // ミドルウェアの設定
+//     router.Use(gin.Logger())
+//     router.Use(gin.Recovery())
+//     router.Use(middleware.CORS())
+//     router.Use(middleware.RequestID())
+//     
+//     // ヘルスチェックエンドポイント
+//     router.GET("/health", container.PostHandler.HealthCheck)
+//     
+//     // API v1 ルートグループ
+//     v1 := router.Group("/api/v1")
+//     {
+//         // 投稿関連のルート
+//         posts := v1.Group("/posts")
+//         {
+//             posts.GET("", container.PostHandler.GetPosts)
+//             posts.POST("", middleware.AuthRequired(), container.PostHandler.CreatePost)
+//             posts.GET("/:id", container.PostHandler.GetPost)
+//             posts.PUT("/:id", middleware.AuthRequired(), container.PostHandler.UpdatePost)
+//             posts.DELETE("/:id", middleware.AuthRequired(), container.PostHandler.DeletePost)
+//         }
+//         
+//         // ユーザー関連のルート（将来の実装）
+//         users := v1.Group("/users")
+//         {
+//             users.GET("/:user_id/posts", container.PostHandler.GetUserPosts)
+//             // users.POST("/register", container.UserHandler.Register)
+//             // users.POST("/login", container.UserHandler.Login)
+//             // users.POST("/logout", middleware.AuthRequired(), container.UserHandler.Logout)
+//         }
+//     }
+//     
+//     return router
+// }
+
+// TODO: グレースフルシャットダウンを実装（発展課題）
+// setupGracefulShutdown sets up graceful shutdown
+// func setupGracefulShutdown(server *http.Server, db *sql.DB) {
+//     quit := make(chan os.Signal, 1)
+//     signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+//     <-quit
+//     
+//     log.Println("Shutting down server...")
+//     
+//     ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+//     defer cancel()
+//     
+//     if err := server.Shutdown(ctx); err != nil {
+//         log.Fatal("Server forced to shutdown:", err)
+//     }
+//     
+//     if err := db.Close(); err != nil {
+//         log.Printf("Error closing database: %v", err)
+//     }
+//     
+//     log.Println("Server exited")
+// }
+
+// 実装のヒント:
+// 1. 環境変数による設定の外部化
+// 2. データベース接続プールの適切な設定
+// 3. 依存性注入による疎結合の実現
+// 4. ミドルウェアによる横断的関心事の処理
+// 5. グレースフルシャットダウンの実装
+
+// セキュリティ考慮事項:
+// - 環境変数による機密情報の管理
+// - CORS設定
+// - 認証ミドルウェア
+// - レート制限
+// - ログ出力時の機密情報除外
+
+// パフォーマンス考慮事項:
+// - データベース接続プールの最適化
+// - 適切なタイムアウト設定
+// - ミドルウェアの順序最適化
+// - ログレベルの適切な設定
+
+// 運用考慮事項:
+// - ヘルスチェックエンドポイント
+// - メトリクス収集
+// - 構造化ログ
+// - エラー監視

@@ -1,0 +1,153 @@
+# Caddy Configuration Template
+# 学習課題: このテンプレートを参考に、完全なCaddyfileを実装してください
+
+# =============================================================================
+# Global Configuration
+# =============================================================================
+
+# TODO: グローバル設定を実装
+# {
+#     # 開発環境用設定
+#     auto_https off  # 開発環境では自動HTTPSを無効化
+#     local_certs     # ローカル証明書を使用
+#     
+#     # ログ設定
+#     log {
+#         output file /var/log/caddy/access.log
+#         format json
+#     }
+#     
+#     # セキュリティヘッダー
+#     header {
+#         # セキュリティヘッダーを追加
+#         X-Content-Type-Options nosniff
+#         X-Frame-Options DENY
+#         X-XSS-Protection "1; mode=block"
+#         Referrer-Policy strict-origin-when-cross-origin
+#     }
+# }
+
+# =============================================================================
+# Main Site Configuration
+# =============================================================================
+
+# TODO: メインサイトの設定を実装
+# app.local {
+#     # ルートパスの設定
+#     # デフォルトでsimple-crud-boardを表示
+#     
+#     # API ルーティング
+#     # /api/crud/* -> simple-crud-backend:8080
+#     # /api/auth/* -> user-auth-backend:8081
+#     
+#     # フロントエンドルーティング  
+#     # /crud/* -> simple-crud-frontend:3000
+#     # /auth/* -> user-auth-frontend:3001
+#     # /* -> simple-crud-frontend:3000 (デフォルト)
+#     
+#     # CORS設定
+#     # 適切なCORSヘッダーを設定
+#     
+#     # ログ設定
+#     # アクセスログとエラーログを設定
+# }
+
+# =============================================================================
+# Implementation Examples (参考実装)
+# =============================================================================
+
+# 基本的なリバースプロキシの例:
+# reverse_proxy /api/crud/* simple-crud-backend:8080
+
+# パスの書き換えを含むプロキシの例:
+# reverse_proxy /api/crud/* simple-crud-backend:8080 {
+#     header_up Host {upstream_hostport}
+#     header_up X-Real-IP {remote_host}
+#     header_up X-Forwarded-For {remote_host}
+#     header_up X-Forwarded-Proto {scheme}
+# }
+
+# 静的ファイルの配信例:
+# handle /static/* {
+#     file_server
+#     root /var/www/static
+# }
+
+# ヘルスチェックエンドポイントの例:
+# handle /health {
+#     respond "OK" 200
+# }
+
+# =============================================================================
+# Advanced Configuration (発展課題)
+# =============================================================================
+
+# TODO: 発展的な設定を実装 (オプション)
+
+# 1. レート制限
+# rate_limit {
+#     zone static_ip 10r/s
+# }
+
+# 2. 認証
+# basicauth /admin/* {
+#     admin $2a$14$...  # bcryptハッシュ
+# }
+
+# 3. キャッシュ設定
+# header {
+#     Cache-Control "public, max-age=3600"
+# }
+
+# 4. 圧縮
+# encode gzip
+
+# 5. ファイルサーバー
+# file_server {
+#     hide .htaccess
+#     index index.html
+# }
+
+# =============================================================================
+# Development vs Production
+# =============================================================================
+
+# 開発環境と本番環境での設定の違い:
+
+# 開発環境:
+# - auto_https off
+# - local_certs
+# - デバッグログ有効
+# - CORS制限緩和
+
+# 本番環境:
+# - 自動HTTPS有効
+# - 厳格なセキュリティヘッダー
+# - アクセスログ記録
+# - レート制限有効
+
+# =============================================================================
+# Troubleshooting Tips
+# =============================================================================
+
+# よくある問題と解決方法:
+
+# 1. 証明書エラー
+#    -> local_certs を使用し、ブラウザで証明書を信頼する
+
+# 2. プロキシエラー
+#    -> バックエンドサービスが起動しているか確認
+#    -> ネットワーク設定を確認
+
+# 3. CORS エラー
+#    -> 適切なCORSヘッダーを設定
+#    -> プリフライトリクエストに対応
+
+# 4. パフォーマンス問題
+#    -> 圧縮を有効化
+#    -> 適切なキャッシュ設定
+#    -> 静的ファイルの最適化
+
+# 参考資料:
+# - Caddy Documentation: https://caddyserver.com/docs/
+# - Caddyfile Syntax: https://caddyserver.com/docs/caddyfile/

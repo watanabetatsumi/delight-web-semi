@@ -1,0 +1,279 @@
+# Terraform インフラストラクチャデプロイメントワークフロー
+#
+# 🎯 学習ポイント:
+# - GitHub Actions での Terraform 実行
+# - AWS 認証情報の安全な管理
+# - 環境別インフラストラクチャデプロイ
+
+name: Deploy Infrastructure
+
+# TODO: ワークフローのトリガー設定
+on:
+  # terraform ディレクトリの変更時
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/deploy-infrastructure.yml'
+  
+  # 手動実行を許可
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      destroy:
+        description: 'Destroy infrastructure'
+        required: false
+        default: false
+        type: boolean
+
+# TODO: 環境変数の設定
+env:
+  TF_VERSION: '1.6.0'
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+# TODO: ジョブの定義
+jobs:
+  # 環境の決定
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+  # Terraform プランの作成
+  terraform-plan:
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    environment: ${{ needs.determine-environment.outputs.environment }}
+    
+    steps:
+      # TODO: リポジトリのチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # TODO: Terraform のセットアップ
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # TODO: AWS 認証情報の設定
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # TODO: Terraform の初期化
+      - name: Terraform Init
+        working-directory: terraform
+        run: |
+          # バックエンド設定ファイルの作成
+          cat > backend.tf << EOF
+          terraform {
+            backend "s3" {
+              bucket = "${{ secrets.TF_STATE_BUCKET }}"
+              key    = "simple-crud-board/${{ needs.determine-environment.outputs.environment }}/terraform.tfstate"
+              region = "${{ env.AWS_REGION }}"
+              dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+              encrypt = true
+            }
+          }
+          EOF
+          
+          terraform init
+
+      # TODO: Terraform フォーマットチェック
+      - name: Terraform Format Check
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+
+      # TODO: Terraform バリデーション
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      # TODO: Terraform プラン
+      - name: Terraform Plan
+        working-directory: terraform
+        run: |
+          terraform plan \
+            -var-file="environments/${{ needs.determine-environment.outputs.environment }}/terraform.tfvars" \
+            -out=tfplan \
+            -detailed-exitcode
+        continue-on-error: true
+        id: plan
+
+      # TODO: プラン結果のコメント（Pull Request の場合）
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `
+            #### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+            
+            <details><summary>Show Plan</summary>
+            
+            \`\`\`terraform
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+            
+            </details>
+            
+            *Environment: ${{ needs.determine-environment.outputs.environment }}*
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      # TODO: プランファイルのアップロード
+      - name: Upload plan file
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.determine-environment.outputs.environment }}
+          path: terraform/tfplan
+          retention-days: 1
+
+  # Terraform 適用
+  terraform-apply:
+    runs-on: ubuntu-latest
+    needs: [determine-environment, terraform-plan]
+    environment: ${{ needs.determine-environment.outputs.environment }}
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      # TODO: リポジトリのチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # TODO: Terraform のセットアップ
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      # TODO: AWS 認証情報の設定
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # TODO: プランファイルのダウンロード
+      - name: Download plan file
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.determine-environment.outputs.environment }}
+          path: terraform/
+
+      # TODO: Terraform の初期化
+      - name: Terraform Init
+        working-directory: terraform
+        run: |
+          cat > backend.tf << EOF
+          terraform {
+            backend "s3" {
+              bucket = "${{ secrets.TF_STATE_BUCKET }}"
+              key    = "simple-crud-board/${{ needs.determine-environment.outputs.environment }}/terraform.tfstate"
+              region = "${{ env.AWS_REGION }}"
+              dynamodb_table = "${{ secrets.TF_LOCK_TABLE }}"
+              encrypt = true
+            }
+          }
+          EOF
+          
+          terraform init
+
+      # TODO: Terraform 適用または破棄
+      - name: Terraform Apply/Destroy
+        working-directory: terraform
+        run: |
+          if [ "${{ github.event.inputs.destroy }}" = "true" ]; then
+            echo "Destroying infrastructure..."
+            terraform destroy \
+              -var-file="environments/${{ needs.determine-environment.outputs.environment }}/terraform.tfvars" \
+              -auto-approve
+          else
+            echo "Applying infrastructure changes..."
+            terraform apply tfplan
+          fi
+
+      # TODO: Terraform 出力値の取得
+      - name: Get Terraform Outputs
+        if: github.event.inputs.destroy != 'true'
+        working-directory: terraform
+        id: outputs
+        run: |
+          echo "s3_bucket_name=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
+          echo "api_gateway_url=$(terraform output -raw api_gateway_url)" >> $GITHUB_OUTPUT
+          echo "lambda_function_name=$(terraform output -raw lambda_function_name)" >> $GITHUB_OUTPUT
+          echo "dynamodb_table_name=$(terraform output -raw dynamodb_table_name)" >> $GITHUB_OUTPUT
+
+      # TODO: 出力値をファイルに保存（他のワークフローで使用）
+      - name: Save outputs
+        if: github.event.inputs.destroy != 'true'
+        run: |
+          mkdir -p outputs
+          cat > outputs/terraform-outputs.json << EOF
+          {
+            "s3_bucket_name": "${{ steps.outputs.outputs.s3_bucket_name }}",
+            "api_gateway_url": "${{ steps.outputs.outputs.api_gateway_url }}",
+            "lambda_function_name": "${{ steps.outputs.outputs.lambda_function_name }}",
+            "dynamodb_table_name": "${{ steps.outputs.outputs.dynamodb_table_name }}",
+            "environment": "${{ needs.determine-environment.outputs.environment }}"
+          }
+          EOF
+
+      # TODO: 出力値のアップロード
+      - name: Upload outputs
+        if: github.event.inputs.destroy != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-outputs-${{ needs.determine-environment.outputs.environment }}
+          path: outputs/terraform-outputs.json
+          retention-days: 7
+
+      # TODO: デプロイメント結果の通知
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Infrastructure Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.determine-environment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Action:** ${{ github.event.inputs.destroy == 'true' && 'Destroy' || 'Deploy' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.destroy }}" != "true" ]; then
+            echo "**Resources Created:**" >> $GITHUB_STEP_SUMMARY
+            echo "- S3 Bucket: ${{ steps.outputs.outputs.s3_bucket_name }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Lambda Function: ${{ steps.outputs.outputs.lambda_function_name }}" >> $GITHUB_STEP_SUMMARY
+            echo "- DynamoDB Table: ${{ steps.outputs.outputs.dynamodb_table_name }}" >> $GITHUB_STEP_SUMMARY
+            echo "- API Gateway: ${{ steps.outputs.outputs.api_gateway_url }}" >> $GITHUB_STEP_SUMMARY
+          fi

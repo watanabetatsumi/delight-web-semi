@@ -1,0 +1,190 @@
+// Package services contains application business logic
+// 学習課題: このテンプレートを参考に、完全なPostServiceを実装してください
+package services
+
+import (
+	"context"
+	"errors"
+	"docker-orchestration/simple-crud-board/backend/internal/application/interfaces"
+	"docker-orchestration/simple-crud-board/backend/internal/domain/entities"
+)
+
+// PostService handles post-related business logic
+// TODO: PostServiceを完全に実装してください
+type PostService struct {
+	// TODO: 依存関係を定義
+	// postRepo interfaces.PostRepository
+	// userRepo interfaces.UserRepository  // ユーザー存在確認用
+}
+
+// TODO: コンストラクタを実装
+// NewPostService creates a new PostService
+// func NewPostService(postRepo interfaces.PostRepository, userRepo interfaces.UserRepository) *PostService {
+//     return &PostService{
+//         postRepo: postRepo,
+//         userRepo: userRepo,
+//     }
+// }
+
+// TODO: 投稿作成のビジネスロジックを実装
+// CreatePost creates a new post with business logic validation
+// func (s *PostService) CreatePost(ctx context.Context, userID int, content string) (*entities.Post, error) {
+//     // ユーザーの存在確認
+//     if _, err := s.userRepo.GetByID(ctx, userID); err != nil {
+//         return nil, errors.New("user not found")
+//     }
+//     
+//     // 投稿エンティティの作成
+//     post, err := entities.NewPost(content, userID)
+//     if err != nil {
+//         return nil, err
+//     }
+//     
+//     // データベースに保存
+//     if err := s.postRepo.Create(ctx, post); err != nil {
+//         return nil, err
+//     }
+//     
+//     return post, nil
+// }
+
+// TODO: 投稿取得のビジネスロジックを実装
+// GetPost retrieves a post by ID
+// func (s *PostService) GetPost(ctx context.Context, id int) (*entities.Post, error) {
+//     if id <= 0 {
+//         return nil, errors.New("invalid post ID")
+//     }
+//     
+//     return s.postRepo.GetByID(ctx, id)
+// }
+
+// TODO: 投稿一覧取得のビジネスロジックを実装
+// GetAllPosts retrieves all posts with optional pagination
+// func (s *PostService) GetAllPosts(ctx context.Context, offset, limit int) ([]*entities.Post, error) {
+//     if offset < 0 {
+//         offset = 0
+//     }
+//     if limit <= 0 || limit > 100 {
+//         limit = 20  // デフォルト値
+//     }
+//     
+//     return s.postRepo.GetWithPagination(ctx, offset, limit)
+// }
+
+// TODO: ユーザー投稿取得のビジネスロジックを実装
+// GetUserPosts retrieves posts by user ID
+// func (s *PostService) GetUserPosts(ctx context.Context, userID int) ([]*entities.Post, error) {
+//     if userID <= 0 {
+//         return nil, errors.New("invalid user ID")
+//     }
+//     
+//     // ユーザーの存在確認
+//     if _, err := s.userRepo.GetByID(ctx, userID); err != nil {
+//         return nil, errors.New("user not found")
+//     }
+//     
+//     return s.postRepo.GetByUserID(ctx, userID)
+// }
+
+// TODO: 投稿更新のビジネスロジックを実装
+// UpdatePost updates a post with authorization check
+// func (s *PostService) UpdatePost(ctx context.Context, id int, userID int, content string) (*entities.Post, error) {
+//     // 投稿の取得
+//     post, err := s.postRepo.GetByID(ctx, id)
+//     if err != nil {
+//         return nil, err
+//     }
+//     
+//     // 所有者チェック
+//     if !post.IsOwnedBy(userID) {
+//         return nil, errors.New("unauthorized: not the owner of the post")
+//     }
+//     
+//     // コンテンツの更新
+//     if err := post.UpdateContent(content); err != nil {
+//         return nil, err
+//     }
+//     
+//     // データベースに保存
+//     if err := s.postRepo.Update(ctx, post); err != nil {
+//         return nil, err
+//     }
+//     
+//     return post, nil
+// }
+
+// TODO: 投稿削除のビジネスロジックを実装
+// DeletePost deletes a post with authorization check
+// func (s *PostService) DeletePost(ctx context.Context, id int, userID int) error {
+//     // 投稿の取得
+//     post, err := s.postRepo.GetByID(ctx, id)
+//     if err != nil {
+//         return err
+//     }
+//     
+//     // 所有者チェック
+//     if !post.IsOwnedBy(userID) {
+//         return errors.New("unauthorized: not the owner of the post")
+//     }
+//     
+//     // データベースから削除
+//     return s.postRepo.Delete(ctx, id)
+// }
+
+// TODO: 検索機能のビジネスロジックを実装
+// SearchPosts searches posts by content
+// func (s *PostService) SearchPosts(ctx context.Context, query string) ([]*entities.Post, error) {
+//     if strings.TrimSpace(query) == "" {
+//         return nil, errors.New("search query cannot be empty")
+//     }
+//     
+//     if len(query) < 2 {
+//         return nil, errors.New("search query too short (minimum 2 characters)")
+//     }
+//     
+//     return s.postRepo.SearchByContent(ctx, query)
+// }
+
+// TODO: 統計情報取得のビジネスロジックを実装
+// GetPostStats retrieves post statistics
+// func (s *PostService) GetPostStats(ctx context.Context) (*PostStats, error) {
+//     totalPosts, err := s.postRepo.CountAll(ctx)
+//     if err != nil {
+//         return nil, err
+//     }
+//     
+//     recentPosts, err := s.postRepo.GetRecentPosts(ctx, 5)
+//     if err != nil {
+//         return nil, err
+//     }
+//     
+//     return &PostStats{
+//         TotalPosts:  totalPosts,
+//         RecentPosts: recentPosts,
+//     }, nil
+// }
+
+// TODO: 統計情報の構造体を定義
+// PostStats represents post statistics
+// type PostStats struct {
+//     TotalPosts  int              `json:"total_posts"`
+//     RecentPosts []*entities.Post `json:"recent_posts"`
+// }
+
+// 実装のヒント:
+// 1. ビジネスロジックをサービス層に集約
+// 2. 認可チェックを適切に実装
+// 3. バリデーションを複数層で実施
+// 4. エラーハンドリングを丁寧に行う
+// 5. トランザクション境界を考慮
+
+// 設計原則:
+// - Single Responsibility Principle (SRP)
+// - Open/Closed Principle (OCP)
+// - Dependency Inversion Principle (DIP)
+
+// テスト戦略:
+// - モックを使用した単体テスト
+// - ビジネスロジックの境界値テスト
+// - エラーケースのテスト
+// - 認可ロジックのテスト

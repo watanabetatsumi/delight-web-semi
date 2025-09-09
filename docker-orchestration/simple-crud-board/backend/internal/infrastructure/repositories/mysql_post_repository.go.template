@@ -1,0 +1,326 @@
+// Package repositories contains data access implementations
+// 学習課題: このテンプレートを参考に、完全なMySQLリポジトリを実装してください
+package repositories
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"docker-orchestration/simple-crud-board/backend/internal/domain/entities"
+	"docker-orchestration/simple-crud-board/backend/internal/application/interfaces"
+)
+
+// MySQLPostRepository implements PostRepository interface for MySQL
+// TODO: MySQLPostRepositoryを完全に実装してください
+type MySQLPostRepository struct {
+	// TODO: データベース接続を定義
+	// db *sql.DB
+}
+
+// TODO: コンストラクタを実装
+// NewMySQLPostRepository creates a new MySQL post repository
+// func NewMySQLPostRepository(db *sql.DB) interfaces.PostRepository {
+//     return &MySQLPostRepository{
+//         db: db,
+//     }
+// }
+
+// TODO: Create メソッドを実装
+// Create inserts a new post into the database
+// func (r *MySQLPostRepository) Create(ctx context.Context, post *entities.Post) error {
+//     query := `
+//         INSERT INTO posts (content, user_id, created_at, updated_at)
+//         VALUES (?, ?, ?, ?)
+//     `
+//     
+//     result, err := r.db.ExecContext(ctx, query, 
+//         post.Content, 
+//         post.UserID, 
+//         post.CreatedAt, 
+//         post.UpdatedAt,
+//     )
+//     if err != nil {
+//         return fmt.Errorf("failed to create post: %w", err)
+//     }
+//     
+//     // 生成されたIDを取得
+//     id, err := result.LastInsertId()
+//     if err != nil {
+//         return fmt.Errorf("failed to get last insert id: %w", err)
+//     }
+//     
+//     post.ID = int(id)
+//     return nil
+// }
+
+// TODO: GetByID メソッドを実装
+// GetByID retrieves a post by its ID
+// func (r *MySQLPostRepository) GetByID(ctx context.Context, id int) (*entities.Post, error) {
+//     query := `
+//         SELECT id, content, user_id, created_at, updated_at
+//         FROM posts
+//         WHERE id = ?
+//     `
+//     
+//     row := r.db.QueryRowContext(ctx, query, id)
+//     
+//     post := &entities.Post{}
+//     err := row.Scan(
+//         &post.ID,
+//         &post.Content,
+//         &post.UserID,
+//         &post.CreatedAt,
+//         &post.UpdatedAt,
+//     )
+//     
+//     if err != nil {
+//         if err == sql.ErrNoRows {
+//             return nil, fmt.Errorf("post not found: %d", id)
+//         }
+//         return nil, fmt.Errorf("failed to get post: %w", err)
+//     }
+//     
+//     return post, nil
+// }
+
+// TODO: GetAll メソッドを実装
+// GetAll retrieves all posts ordered by creation date (newest first)
+// func (r *MySQLPostRepository) GetAll(ctx context.Context) ([]*entities.Post, error) {
+//     query := `
+//         SELECT id, content, user_id, created_at, updated_at
+//         FROM posts
+//         ORDER BY created_at DESC
+//     `
+//     
+//     rows, err := r.db.QueryContext(ctx, query)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to get posts: %w", err)
+//     }
+//     defer rows.Close()
+//     
+//     var posts []*entities.Post
+//     for rows.Next() {
+//         post := &entities.Post{}
+//         err := rows.Scan(
+//             &post.ID,
+//             &post.Content,
+//             &post.UserID,
+//             &post.CreatedAt,
+//             &post.UpdatedAt,
+//         )
+//         if err != nil {
+//             return nil, fmt.Errorf("failed to scan post: %w", err)
+//         }
+//         posts = append(posts, post)
+//     }
+//     
+//     if err = rows.Err(); err != nil {
+//         return nil, fmt.Errorf("error iterating posts: %w", err)
+//     }
+//     
+//     return posts, nil
+// }
+
+// TODO: Update メソッドを実装
+// Update updates an existing post in the database
+// func (r *MySQLPostRepository) Update(ctx context.Context, post *entities.Post) error {
+//     query := `
+//         UPDATE posts
+//         SET content = ?, updated_at = ?
+//         WHERE id = ?
+//     `
+//     
+//     result, err := r.db.ExecContext(ctx, query, 
+//         post.Content, 
+//         post.UpdatedAt, 
+//         post.ID,
+//     )
+//     if err != nil {
+//         return fmt.Errorf("failed to update post: %w", err)
+//     }
+//     
+//     rowsAffected, err := result.RowsAffected()
+//     if err != nil {
+//         return fmt.Errorf("failed to get rows affected: %w", err)
+//     }
+//     
+//     if rowsAffected == 0 {
+//         return fmt.Errorf("post not found: %d", post.ID)
+//     }
+//     
+//     return nil
+// }
+
+// TODO: Delete メソッドを実装
+// Delete removes a post from the database
+// func (r *MySQLPostRepository) Delete(ctx context.Context, id int) error {
+//     query := `DELETE FROM posts WHERE id = ?`
+//     
+//     result, err := r.db.ExecContext(ctx, query, id)
+//     if err != nil {
+//         return fmt.Errorf("failed to delete post: %w", err)
+//     }
+//     
+//     rowsAffected, err := result.RowsAffected()
+//     if err != nil {
+//         return fmt.Errorf("failed to get rows affected: %w", err)
+//     }
+//     
+//     if rowsAffected == 0 {
+//         return fmt.Errorf("post not found: %d", id)
+//     }
+//     
+//     return nil
+// }
+
+// TODO: GetByUserID メソッドを実装
+// GetByUserID retrieves all posts by a specific user
+// func (r *MySQLPostRepository) GetByUserID(ctx context.Context, userID int) ([]*entities.Post, error) {
+//     query := `
+//         SELECT id, content, user_id, created_at, updated_at
+//         FROM posts
+//         WHERE user_id = ?
+//         ORDER BY created_at DESC
+//     `
+//     
+//     rows, err := r.db.QueryContext(ctx, query, userID)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to get user posts: %w", err)
+//     }
+//     defer rows.Close()
+//     
+//     var posts []*entities.Post
+//     for rows.Next() {
+//         post := &entities.Post{}
+//         err := rows.Scan(
+//             &post.ID,
+//             &post.Content,
+//             &post.UserID,
+//             &post.CreatedAt,
+//             &post.UpdatedAt,
+//         )
+//         if err != nil {
+//             return nil, fmt.Errorf("failed to scan post: %w", err)
+//         }
+//         posts = append(posts, post)
+//     }
+//     
+//     return posts, nil
+// }
+
+// TODO: GetWithPagination メソッドを実装
+// GetWithPagination retrieves posts with pagination
+// func (r *MySQLPostRepository) GetWithPagination(ctx context.Context, offset, limit int) ([]*entities.Post, error) {
+//     query := `
+//         SELECT id, content, user_id, created_at, updated_at
+//         FROM posts
+//         ORDER BY created_at DESC
+//         LIMIT ? OFFSET ?
+//     `
+//     
+//     rows, err := r.db.QueryContext(ctx, query, limit, offset)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to get posts with pagination: %w", err)
+//     }
+//     defer rows.Close()
+//     
+//     var posts []*entities.Post
+//     for rows.Next() {
+//         post := &entities.Post{}
+//         err := rows.Scan(
+//             &post.ID,
+//             &post.Content,
+//             &post.UserID,
+//             &post.CreatedAt,
+//             &post.UpdatedAt,
+//         )
+//         if err != nil {
+//             return nil, fmt.Errorf("failed to scan post: %w", err)
+//         }
+//         posts = append(posts, post)
+//     }
+//     
+//     return posts, nil
+// }
+
+// TODO: SearchByContent メソッドを実装
+// SearchByContent searches posts by content using LIKE operator
+// func (r *MySQLPostRepository) SearchByContent(ctx context.Context, query string) ([]*entities.Post, error) {
+//     sqlQuery := `
+//         SELECT id, content, user_id, created_at, updated_at
+//         FROM posts
+//         WHERE content LIKE ?
+//         ORDER BY created_at DESC
+//     `
+//     
+//     searchPattern := "%" + query + "%"
+//     rows, err := r.db.QueryContext(ctx, sqlQuery, searchPattern)
+//     if err != nil {
+//         return nil, fmt.Errorf("failed to search posts: %w", err)
+//     }
+//     defer rows.Close()
+//     
+//     var posts []*entities.Post
+//     for rows.Next() {
+//         post := &entities.Post{}
+//         err := rows.Scan(
+//             &post.ID,
+//             &post.Content,
+//             &post.UserID,
+//             &post.CreatedAt,
+//             &post.UpdatedAt,
+//         )
+//         if err != nil {
+//             return nil, fmt.Errorf("failed to scan post: %w", err)
+//         }
+//         posts = append(posts, post)
+//     }
+//     
+//     return posts, nil
+// }
+
+// TODO: CountAll メソッドを実装
+// CountAll returns the total number of posts
+// func (r *MySQLPostRepository) CountAll(ctx context.Context) (int, error) {
+//     query := `SELECT COUNT(*) FROM posts`
+//     
+//     var count int
+//     err := r.db.QueryRowContext(ctx, query).Scan(&count)
+//     if err != nil {
+//         return 0, fmt.Errorf("failed to count posts: %w", err)
+//     }
+//     
+//     return count, nil
+// }
+
+// TODO: CountByUserID メソッドを実装
+// CountByUserID returns the number of posts by a specific user
+// func (r *MySQLPostRepository) CountByUserID(ctx context.Context, userID int) (int, error) {
+//     query := `SELECT COUNT(*) FROM posts WHERE user_id = ?`
+//     
+//     var count int
+//     err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
+//     if err != nil {
+//         return 0, fmt.Errorf("failed to count user posts: %w", err)
+//     }
+//     
+//     return count, nil
+// }
+
+// 実装のヒント:
+// 1. SQLインジェクション対策でプレースホルダーを使用
+// 2. エラーハンドリングを丁寧に行う
+// 3. リソースのクリーンアップ (defer rows.Close())
+// 4. コンテキストを使用してキャンセレーション対応
+// 5. 適切なエラーメッセージを提供
+
+// パフォーマンス最適化:
+// - インデックスの活用
+// - 適切なLIMIT句の使用
+// - 不要なカラムの取得を避ける
+// - コネクションプールの活用
+
+// セキュリティ考慮事項:
+// - SQLインジェクション対策
+// - 適切な権限設定
+// - ログ出力時の機密情報除外
